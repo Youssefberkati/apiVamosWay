@@ -5,12 +5,7 @@ const cors = require('cors');
 
 const app = express();
 
-app.use(cors({
-  origin: "*", // pour test, autorise toutes les origines
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
-}));
+app.use(cors());
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
@@ -18,9 +13,6 @@ app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 app.use((req, res, next) => {
   res.header('Content-Type', 'application/json; charset=utf-8');
   next();
-});
-app.get('/api/test', (req, res) => {
-  res.json({ message: 'Hello from backend!' });
 });
 
 // Routes
@@ -30,12 +22,30 @@ app.use('/api/itineraries', require('./routes/itineraries'));
 app.use('/api/content', require('./routes/content'));
 app.use('/api/admin', require('./routes/admin'));
 
-app.get('/health', (_, res) =>
-  res.json({
-    status: 'ok',
-    db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-  }),
-);
+app.get('/health', async (_, res) => {
+  const state =
+    mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  if (state !== 'connected') return res.json({ status: 'ok', db: state });
+  try {
+    const collections = await mongoose.connection.db
+      .listCollections()
+      .toArray();
+    const counts = {};
+    for (const col of collections) {
+      counts[col.name] = await mongoose.connection.db
+        .collection(col.name)
+        .countDocuments();
+    }
+    res.json({
+      status: 'ok',
+      db: state,
+      database: mongoose.connection.db.databaseName,
+      collections: counts,
+    });
+  } catch (e) {
+    res.json({ status: 'ok', db: state, error: e.message });
+  }
+});
 
 // Connexion MongoDB
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/vamosway';
