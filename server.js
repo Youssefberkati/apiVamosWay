@@ -5,7 +5,12 @@ const cors = require('cors');
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: "*", // pour test, autorise toutes les origines
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+}));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
@@ -13,6 +18,9 @@ app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 app.use((req, res, next) => {
   res.header('Content-Type', 'application/json; charset=utf-8');
   next();
+});
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'Hello from backend!' });
 });
 
 // Routes
